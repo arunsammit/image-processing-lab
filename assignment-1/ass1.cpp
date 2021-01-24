@@ -1,11 +1,14 @@
 #include<bits/stdc++.h>
+#define  READ_BY_TYPE(a)  (char *)a, sizeof(a)    
 using namespace std;
 struct BMPHeader{
+  //Bitmap-File-Header
 	unsigned char file_type[2];
 	unsigned int file_size;
 	unsigned short reserved1;
 	unsigned short reserved2;
 	unsigned int offset_data;
+  //BITMAPINFOHEADER
 	unsigned int size;
 	int width;
 	int height;
@@ -13,8 +16,8 @@ struct BMPHeader{
 	unsigned short bit_count;
 	unsigned int compression_type;
 	unsigned int image_size;
-	unsigned int x_res;
-	unsigned int y_res;
+	int x_res;
+	int y_res;
 	unsigned int colors_used;
 	unsigned int colors_imp;
 };
@@ -47,22 +50,41 @@ struct color_table{
 class BitMap
 {
 	private:
-		const char* bm_filename;
-
-	public:
+		string bm_filename;
 		BMPHeader bm_head;
 		unsigned char*** bm_pixelValues;
-
-		/// Empty constructor
-		BitMap(){}
-
+    template<typename T>
+    void extract(T& to_store ,unsigned char * &header_ptr){
+      to_store = *(T*)header_ptr;
+      header_ptr += sizeof(T);
+    }
+    template<typename T>
+    void write_it(T to_write, ofstream& bm_stream){
+      bm_stream.write((char *)&to_write, sizeof(T));
+    }
+    template<typename T>
+    T*** get3Dmat(int row, int col, int depth) {
+      T*** mat = new T** [row];
+      for (int i = 0; i < row; i++){
+        mat[i] = new T* [col];
+        for (int j = 0; j < col; j++)
+          mat[i][j] = new T [depth];
+			}
+      return mat;
+    }
+	public:
+    //constructor
+    BitMap(){}
+    BitMap(string filename){
+      read(filename);
+    }
 		/**
 		 * A function to read the pixel values and header information
 		 * of the specified .bmp file
 		 *
 		 * @param filename: Path to the .bmp file to be read
 		 */
-		void read(const char* filename){
+		void read(string filename){
 			// Store the filename for future reference
 			bm_filename = filename;
 
@@ -71,58 +93,45 @@ class BitMap
 
 			// Store the first 54 bytes (header)
 			unsigned char bm_header[54];
-			unsigned char a;
-			for (int i = 0; i < 54; i++){
-				bm_stream >> hex >> a;
-				bm_header[i] = a;
-			}
-			
-			// Store filetype as unsigned char
-			bm_head.file_type[0] = bm_header[0];
-			bm_head.file_type[1] = bm_header[1];
+
+			bm_stream.read((char *)bm_head.file_type, 2);
 			// Add '\0' to avoid printing garbage values
 			bm_head.file_type[2] = 0;
-			
-			// Store the appropriate fields of file header
-			bm_head.file_size = *(unsigned int*)(bm_header+2);
-			bm_head.reserved1 = *(unsigned short*)(bm_header+6);
-			bm_head.reserved2 = *(unsigned short*)(bm_header+8);
-			bm_head.offset_data = *(unsigned int*)(bm_header+10);
+      bm_stream.read((char *)bm_header,52);
+      unsigned char * header_ptr = bm_header; 
 
-			// Store the appropriate fields of BMP header
-			bm_head.size = *(unsigned int*)(bm_header+14);
-			bm_head.width = *(int*)(bm_header+18);
-			bm_head.height = *(int*)(bm_header+22);
-			bm_head.planes = *(unsigned short*)(bm_header+26);
-			bm_head.bit_count = *(unsigned short*)(bm_header+28);
-			bm_head.compression_type = *(unsigned int*)(bm_header+30);
-			bm_head.image_size = *(unsigned int*)(bm_header+34);
-			bm_head.x_res = *(unsigned int*)(bm_header+38);
-			bm_head.y_res = *(unsigned int*)(bm_header+42);
-			bm_head.colors_used = *(unsigned int*)(bm_header+46);
-			bm_head.colors_imp = *(unsigned int*)(bm_header+50);
+			// Store the appropriate fields of file header
+			extract(bm_head.file_size,header_ptr);
+      extract(bm_head.reserved1,header_ptr);
+      extract(bm_head.reserved2,header_ptr);
+      extract(bm_head.offset_data,header_ptr);
+      extract(bm_head.size,header_ptr);
+      extract(bm_head.width,header_ptr);
+      extract(bm_head.height,header_ptr);
+      extract(bm_head.planes,header_ptr);
+      extract(bm_head.bit_count,header_ptr);
+      extract(bm_head.compression_type,header_ptr);
+      extract(bm_head.image_size,header_ptr);
+      extract(bm_head.x_res,header_ptr);
+      extract(bm_head.y_res,header_ptr);
+      extract(bm_head.colors_used,header_ptr);
+      extract(bm_head.colors_imp,header_ptr);
 
 			// This block is for bit-width of 24, i.e., color images
 			if(bm_head.bit_count == 24){
 				// Compute size of data stream in bytes, including padding
-				auto dataSize = ((bm_head.width * 3 + 3) & (~3)) * bm_head.height;
-				vector<char> img(dataSize);
-
-				// Read the pixel values into a vector
-				bm_stream.read(img.data(), img.size());
+				int dataSize = ((bm_head.width * 3 + 3) & (~3)) * bm_head.height;
+        char* img = new char[dataSize];
+				// Read the pixel values into the array
+				bm_stream.read(img, dataSize);
 
 				// Allocate a 3D array to store the pixel values
-				bm_pixelValues = (unsigned char***)malloc(bm_head.height*sizeof(unsigned char**));
-				for (int i = 0; i < bm_head.height; i++){
-					bm_pixelValues[i] = (unsigned char**)malloc(bm_head.width*sizeof(unsigned char*));
-					for (int j = 0; j < bm_head.width; j++)
-						bm_pixelValues[i][j] = (unsigned char*)malloc(3*sizeof(unsigned char));
-				}
+        bm_pixelValues = get3Dmat<unsigned char>(bm_head.height,bm_head.width,3);
 
 				// Copy pixel values to the 3D array in RGB ordering and flipping vertical axis
 				for (int i = 0; i < bm_head.height; i++){
 					for (int j = 0; j < bm_head.width; j++){
-						a = img[(bm_head.width*3*i)+j*3] & 0xff;
+						unsigned char a = img[(bm_head.width*3*i)+j*3] & 0xff;
 						bm_pixelValues[bm_head.height-1-i][j][2] = a;
 						a = img[(bm_head.width*3*i)+j*3+1] & 0xff;
 						bm_pixelValues[bm_head.height-1-i][j][1] = a;
@@ -149,21 +158,21 @@ class BitMap
 			// Write the header information
 			bm_stream << bm_head.file_type[0];
 			bm_stream << bm_head.file_type[1];
-			bm_stream.write((char*)(&bm_head.file_size), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.reserved1), sizeof(unsigned short));
-			bm_stream.write((char*)(&bm_head.reserved2), sizeof(unsigned short));
-			bm_stream.write((char*)(&bm_head.offset_data), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.size), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.width), sizeof(int));
-			bm_stream.write((char*)(&bm_head.height), sizeof(int));
-			bm_stream.write((char*)(&bm_head.planes), sizeof(unsigned short));
-			bm_stream.write((char*)(&bm_head.bit_count), sizeof(unsigned short));
-			bm_stream.write((char*)(&bm_head.compression_type), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.image_size), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.x_res), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.y_res), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.colors_used), sizeof(unsigned int));
-			bm_stream.write((char*)(&bm_head.colors_imp), sizeof(unsigned int));
+      write_it(bm_head.file_size, bm_stream);
+      write_it(bm_head.reserved1,bm_stream);
+      write_it(bm_head.reserved2,bm_stream);
+      write_it(bm_head.offset_data,bm_stream);
+      write_it(bm_head.size,bm_stream);
+      write_it(bm_head.width,bm_stream);
+      write_it(bm_head.height,bm_stream);
+      write_it(bm_head.planes,bm_stream);
+      write_it(bm_head.bit_count,bm_stream);
+      write_it(bm_head.compression_type,bm_stream);
+      write_it(bm_head.image_size,bm_stream);
+      write_it(bm_head.x_res,bm_stream);
+      write_it(bm_head.y_res,bm_stream);
+      write_it(bm_head.colors_used,bm_stream);
+      write_it(bm_head.colors_imp,bm_stream);
 
 			// Write the pixel values to file for color images
 			if (bm_head.bit_count == 24){
@@ -210,12 +219,91 @@ class BitMap
 			// Return 1 on success
 			return 1;
 		}
+    /**
+ * A function to flip the image diagonally
+ *
+ * @param inp: Input bitmap
+ * @result out: The output bitmap object
+ */
+  BitMap flip_bitmap(){
+    // Create new empty bitmap for storing output
+    BitMap out;
 
+    // Copy the header information from input
+    out.bm_head = bm_head;
+
+    // Flip the height and width
+    int temp_h = out.bm_head.height;
+    out.bm_head.height = out.bm_head.width;
+    out.bm_head.width = temp_h;
+
+    // Allocate memory to pixelValues
+    out.bm_pixelValues = get3Dmat<unsigned char>(out.bm_head.height, out.bm_head.width, 3);
+
+    // Flip and copy pixel values
+    for (int i = 0; i < out.bm_head.height; i++)
+      for (int j = 0; j < out.bm_head.width; j++)
+        for (int k = 0; k < 3; k++)
+          out.bm_pixelValues[i][j][k] = bm_pixelValues[out.bm_head.width - 1 - j][out.bm_head.height - 1 - i][k];
+
+    // Return the flipped image
+    return out;
+  }
+
+  BitMap bgr_to_gray(string mode){
+    // Create new empty bitmap for storing output
+    BitMap out;
+
+    // Copy the header information from input
+    out.bm_head = bm_head;
+
+    // Change bit-width of pixels
+    out.bm_head.bit_count = 8;
+
+    // Modify file size
+    out.bm_head.file_size = (out.bm_head.height * out.bm_head.width) + sizeof(BMPHeader) + 256*sizeof(color_table);
+    
+    // Shift offset
+    out.bm_head.offset_data += 256 * sizeof(color_table);
+    
+    // Modify image size
+    out.bm_head.image_size = out.bm_head.height * out.bm_head.width;
+
+    // Allocate memory to pixels
+    out.bm_pixelValues = get3Dmat<unsigned char>(out.bm_head.height,out.bm_head.width,1);
+    float value;
+
+    // Compute grayscale values according to mode and assign them to out
+    for (int i = 0; i < out.bm_head.height; i++)
+      for (int j = 0; j < out.bm_head.width; j++){
+        if (mode == "avg")
+          value = (int(bm_pixelValues[i][j][0]) + int(bm_pixelValues[i][j][1]) + int(bm_pixelValues[i][j][2])) / 3.0;
+        
+        if (mode == "min"){
+          value = 255;
+          for (int k = 0; k < 3; k++)
+            if (int(bm_pixelValues[i][j][k]) < value)
+              value = int(bm_pixelValues[i][j][k]);
+        }
+        
+        if (mode == "max"){
+          value = 0;
+          for (int k = 0; k < 3; k++)
+            if (int(bm_pixelValues[i][j][k]) > value)
+              value = int(bm_pixelValues[i][j][k]);
+        }
+
+        out.bm_pixelValues[i][j][0] = int(value);
+      }
+
+    // Return the grayscale image
+    return out;
+  }
 		/// Function to display header information in a structured manner
 		void display_header_information(){
 			cout << endl << "HEADER INFORMATION ";
 			// Display the filename, if available
-			if (bm_filename != NULL)
+			if (bm_filename != "")
 				cout << "for file '" << bm_filename << "'";
 			cout << endl;
 			// Separator
@@ -241,41 +329,7 @@ class BitMap
 };
 
 
-/**
- * A function to flip the image diagonally
- *
- * @param inp: Input bitmap
- * @result out: The output bitmap object
- */
-BitMap flip_bitmap(BitMap inp){
-	// Create new empty bitmap for storing output
-	BitMap out;
 
-	// Copy the header information from input
-	out.bm_head = inp.bm_head;
-
-	// Flip the height and width
-	int temp_h = out.bm_head.height;
-	out.bm_head.height = out.bm_head.width;
-	out.bm_head.width = temp_h;
-
-	// Allocate memory to pixelValues
-	out.bm_pixelValues = (unsigned char***)malloc(out.bm_head.height*sizeof(unsigned char**));
-	for (int i = 0; i < out.bm_head.height; i++){
-		out.bm_pixelValues[i] = (unsigned char**)malloc(out.bm_head.width*sizeof(unsigned char*));
-		for (int j = 0; j < out.bm_head.width; j++)
-			out.bm_pixelValues[i][j] = (unsigned char*)malloc(3*sizeof(unsigned char));
-	}
-
-	// Flip and copy pixel values
-	for (int i = 0; i < out.bm_head.height; i++)
-		for (int j = 0; j < out.bm_head.width; j++)
-			for (int k = 0; k < 3; k++)
-				out.bm_pixelValues[i][j][k] = inp.bm_pixelValues[out.bm_head.width - 1 - j][out.bm_head.height - 1 - i][k];
-
-	// Return the flipped image
-	return out;
-}
 
 /**
  * A function to convert color image to grayscale
@@ -287,61 +341,6 @@ BitMap flip_bitmap(BitMap inp){
  *					- "max"	
  * @result out: The output bitmap object
  */
-BitMap bgr_to_gray(BitMap inp, const char* mode){
-	// Create new empty bitmap for storing output
-	BitMap out;
-
-	// Copy the header information from input
-	out.bm_head = inp.bm_head;
-
-	// Change bit-width of pixels
-	out.bm_head.bit_count = 8;
-
-	// Modify file size
-	out.bm_head.file_size = (out.bm_head.height * out.bm_head.width) + sizeof(BMPHeader) + 256*sizeof(color_table);
-	
-	// Shift offset
-	out.bm_head.offset_data += 256 * sizeof(color_table);
-	
-	// Modify image size
-	out.bm_head.image_size = out.bm_head.height * out.bm_head.width;
-
-	// Allocate memory to pixels
-	out.bm_pixelValues = (unsigned char***)malloc(out.bm_head.height*sizeof(unsigned char**));
-	for (int i = 0; i < out.bm_head.height; i++){
-		out.bm_pixelValues[i] = (unsigned char**)malloc(out.bm_head.width*sizeof(unsigned char*));
-		for (int j = 0; j < out.bm_head.width; j++)
-			out.bm_pixelValues[i][j] = (unsigned char*)malloc(1*sizeof(unsigned char));
-	}
-
-	float value;
-
-	// Compute grayscale values according to mode and assign them to out
-	for (int i = 0; i < out.bm_head.height; i++)
-		for (int j = 0; j < out.bm_head.width; j++){
-			if (mode == "avg")
-				value = (int(inp.bm_pixelValues[i][j][0]) + int(inp.bm_pixelValues[i][j][1]) + int(inp.bm_pixelValues[i][j][2])) / 3.0;
-			
-			if (mode == "min"){
-				value = 255;
-				for (int k = 0; k < 3; k++)
-					if (int(inp.bm_pixelValues[i][j][k]) < value)
-						value = int(inp.bm_pixelValues[i][j][k]);
-			}
-			
-			if (mode == "max"){
-				value = 0;
-				for (int k = 0; k < 3; k++)
-					if (int(inp.bm_pixelValues[i][j][k]) > value)
-						value = int(inp.bm_pixelValues[i][j][k]);
-			}
-
-			out.bm_pixelValues[i][j][0] = int(value);
-		}
-
-	// Return the grayscale image
-	return out;
-}
 
 int main(int argc, char** argv)
 {
@@ -366,11 +365,11 @@ int main(int argc, char** argv)
 	lena.display_header_information();
 
 	// Flip and save the image
-	flip_bitmap(lena).save(argv[2]);
+	lena.flip_bitmap().save(argv[2]);
 
 	// Convert the image to grayscale and save it
-	bgr_to_gray(lena, "avg").save(argv[3]);
-	bgr_to_gray(lena, "min").save(argv[4]);
-	bgr_to_gray(lena, "max").save(argv[5]);
+	lena.bgr_to_gray("avg").save(argv[3]);
+	lena.bgr_to_gray("min").save(argv[4]);
+	lena.bgr_to_gray("max").save(argv[5]);
 	return 0;
 }
