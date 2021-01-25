@@ -55,7 +55,7 @@ class BitMap
 		unsigned char*** bm_pixelValues;
     template<typename T>
     void extract(T& to_store ,unsigned char * &header_ptr){
-      to_store = *(T*)header_ptr;
+      to_store = (*(T*)header_ptr);
       header_ptr += sizeof(T);
     }
     template<typename T>
@@ -114,18 +114,16 @@ class BitMap
 		 * @param fimyImgme: Path to the .bmp file to be read
 		 */
 		void read(string fimyImgme){
-			// Store the fimyImgme for future reference
-			// bm_fimyImgme = fimyImgme;
 
 			// Open new binary stream from the input file
 			ifstream bm_stream(fimyImgme, ios::binary);
 
 			// Store the first 54 bytes (header)
-			unsigned char bm_header[54];
 
 			bm_stream.read((char *)bm_head.file_type, 2);
 			// Add '\0' to avoid printing garbage values
 			bm_head.file_type[2] = 0;
+			unsigned char bm_header[52];
       bm_stream.read((char *)bm_header,52);
       unsigned char * header_ptr = bm_header; 
 			// Store the appropriate fields of file header
@@ -146,7 +144,7 @@ class BitMap
       extract(bm_head.colors_imp,header_ptr);
 
 			// This block is for bit-width of 24, i.e., color images
-			if(bm_head.bit_count == 24){
+			if(bm_head.bit_count >= 24){
 				isColor = true;
 				// Compute size of data stream in bytes, including padding
 				int dataSize = ((bm_head.width * 3 + 3) & (~3)) * bm_head.height;
@@ -271,7 +269,7 @@ class BitMap
     for (int i = 0; i < out.bm_head.height; i++)
       for (int j = 0; j < out.bm_head.width; j++)
         for (int k = 0; k < third_dimension; k++)
-          out.bm_pixelValues[i][j][k] = bm_pixelValues[out.bm_head.width - 1 - j][out.bm_head.height - 1 - i][k];
+          out.bm_pixelValues[i][j][k] = bm_pixelValues[j][i][k];
 
     // Return the flipped image
     return out;
@@ -324,30 +322,39 @@ class BitMap
     // Return the grayscale image
     return out;
   }
-		/// Function to display header information in a structured manner
-		void display_header_information(){
-			cout << endl << "HEADER INFORMATION ";
-			cout << endl;
-			// Separator
-			cout << "__________________________________________________" << endl; 
-			// Header information
-			cout << "File Type: " << "\t\t\t | " << bm_head.file_type << "\t\t |" << endl;
-			cout << "File Size (in bytes): " << "\t\t | " << bm_head.file_size << "\t |" << endl;
-			cout << "Reserved 1: " << "\t\t\t | " << bm_head.reserved1 << "\t\t |" << endl;
-			cout << "Reserved 2: " << "\t\t\t | " << bm_head.reserved2 << "\t\t |" << endl;
-			cout << "Data Offset: " << "\t\t\t | " << bm_head.offset_data << "\t\t |" << endl;
-			cout << "Header Size (in bytes): " << "\t | " << bm_head.size << "\t\t |" << endl;
-			cout << "Image Width: " << "\t\t\t | " << bm_head.width << "\t\t |" << endl;
-			cout << "Image Height: " << "\t\t\t | " << bm_head.height << "\t\t |" << endl;
-			cout << "Number of Planes: " << "\t\t | " << bm_head.planes << "\t\t |" << endl;
-			cout << "Bits per Pixel: " << "\t\t | " << bm_head.bit_count << "\t\t |" << endl;
-			cout << "Compression Type: " << "\t\t | " << bm_head.compression_type << "\t\t |" << endl;
-			cout << "Image Size (in bytes): " << "\t\t | " << bm_head.image_size << "\t |" << endl;
-			cout << "Resolution in x-direction: " << "\t | " << bm_head.x_res << "\t\t |" << endl;
-			cout << "Resolution in y-direction: " << "\t | " << bm_head.y_res << "\t\t |" << endl;
-			cout << "Colors Used: " << "\t\t\t | " << bm_head.colors_used << "\t\t |" << endl;
-			cout << "Colors Important: " << "\t\t | " << bm_head.colors_imp << "\t\t |" << endl;
+	BitMap rotate90clockwise(){
+		BitMap out = flip_bitmap();
+		for(int j=0;j<out.bm_head.width/2;j++){
+			for(int i=0; i<out.bm_head.height;i++){
+				swap(out.bm_pixelValues[i][j],out.bm_pixelValues[i][out.bm_head.width-j-1]);
+			}
 		}
+		return out;
+	}
+	// Function to display header information in a structured manner
+	void display_header_information(){
+		cout << endl << "HEADER INFORMATION ";
+		cout << endl;
+		// Separator
+		cout << "__________________________________________________" << endl; 
+		// Header information
+		cout << "File Type: " << "\t\t\t | " << bm_head.file_type << "\t\t |" << endl;
+		cout << "File Size (in bytes): " << "\t\t | " << bm_head.file_size << "\t |" << endl;
+		cout << "Reserved 1: " << "\t\t\t | " << bm_head.reserved1 << "\t\t |" << endl;
+		cout << "Reserved 2: " << "\t\t\t | " << bm_head.reserved2 << "\t\t |" << endl;
+		cout << "Data Offset: " << "\t\t\t | " << bm_head.offset_data << "\t\t |" << endl;
+		cout << "Header Size (in bytes): " << "\t | " << bm_head.size << "\t\t |" << endl;
+		cout << "Image Width: " << "\t\t\t | " << bm_head.width << "\t\t |" << endl;
+		cout << "Image Height: " << "\t\t\t | " << bm_head.height << "\t\t |" << endl;
+		cout << "Number of Planes: " << "\t\t | " << bm_head.planes << "\t\t |" << endl;
+		cout << "Bits per Pixel: " << "\t\t | " << bm_head.bit_count << "\t\t |" << endl;
+		cout << "Compression Type: " << "\t\t | " << bm_head.compression_type << "\t\t |" << endl;
+		cout << "Image Size (in bytes): " << "\t\t | " << bm_head.image_size << "\t |" << endl;
+		cout << "Resolution in x-direction: " << "\t | " << bm_head.x_res << "\t\t |" << endl;
+		cout << "Resolution in y-direction: " << "\t | " << bm_head.y_res << "\t\t |" << endl;
+		cout << "Colors Used: " << "\t\t\t | " << bm_head.colors_used << "\t\t |" << endl;
+		cout << "Colors Important: " << "\t\t | " << bm_head.colors_imp << "\t\t |" << endl;
+	}
 };
 
 
@@ -382,7 +389,7 @@ int main(int argc, char** argv)
 	// Define and read the .bmp file
 	BitMap myImg;
 	myImg.read(argv[1]);
-	myImg.save("./assignment-1/output images/read_img.bmp");
+	myImg.save("./assignment-1/output_images/read_img.bmp");
 	// Display the header information
 	myImg.display_header_information();
 
@@ -391,7 +398,8 @@ int main(int argc, char** argv)
 
 	// Convert the image to grayscale and save it
 	myImg.bgr_to_gray("avg").save(argv[3]);
-	myImg.bgr_to_gray("min").save(argv[4]);
+	myImg.rotate90clockwise().save(argv[4]);
+	// myImg.bgr_to_gray("min").save(argv[4]);
 	myImg.bgr_to_gray("max").save(argv[5]);
 
 	return 0;
