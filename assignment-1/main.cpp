@@ -363,6 +363,26 @@ class BitMap
 		}
 		return out;
 	}
+	BitMap scale(int scaleX=2, int scaleY=2){
+		BitMap out = BitMap(*this);
+		out.bm_head.height*= scaleX;
+		out.bm_head.width*= scaleY;
+		out.bm_head.image_size*= scaleX*scaleY;
+		int third_dimension = (isColor?3:1);
+		out.bm_pixelValues = get3Dmat<unsigned char>(out.bm_head.height, out.bm_head.width, third_dimension);
+		for (int i = 0; i < out.bm_head.height; i++)
+		{
+			for (int  j = 0; j < out.bm_head.width; j++)
+			{
+				for (int k = 0; k < third_dimension; k++)
+				{
+					out.bm_pixelValues[i][j][k] = bm_pixelValues[i/scaleX][j/scaleY][k];
+				}
+				
+			}
+		}
+		return out;
+	}
 	// Function to display header information in a structured manner
 	void display_header_information(){
 		cout << endl << "HEADER INFORMATION ";
@@ -430,7 +450,7 @@ int main(int argc, char** argv)
 
 	// Convert the image to grayscale and save it
 	// myImg.bgr_to_gray("avg").save(argv[3]);
-	myImg.rotate45clockwise().save(argv[3]);
+	myImg.scale().save(argv[3]);
 	// myImg.bgr_to_gray("min").save(argv[4]);
 	// myImg.bgr_to_gray("max").save(argv[5]);
 
