@@ -88,8 +88,8 @@ class BitMap
 		bool isColor;
     //constructor
     BitMap(){}
-    BitMap(string fimyImgme){
-      read(fimyImgme);
+    BitMap(string ficolorImgme){
+      read(ficolorImgme);
     }
 		BitMap(const BitMap &bm_cpy){
 			bm_head = bm_cpy.bm_head;
@@ -115,12 +115,12 @@ class BitMap
 		 * A function to read the pixel values and header information
 		 * of the specified .bmp file
 		 *
-		 * @param fimyImgme: Path to the .bmp file to be read
+		 * @param ficolorImgme: Path to the .bmp file to be read
 		 */
-		void read(string fimyImgme){
+		void read(string ficolorImgme){
 
 			// Open new binary stream from the input file
-			ifstream bm_stream(fimyImgme, ios::binary);
+			ifstream bm_stream(ficolorImgme, ios::binary);
 
 			// Store the first 54 bytes (header)
 
@@ -199,11 +199,11 @@ class BitMap
 		 * A function to save the pixel values and header information
 		 * to the specified file
 		 *
-		 * @param fimyImgme: Path to the file to be saved
+		 * @param ficolorImgme: Path to the file to be saved
 		 */
-		int save(const char* fimyImgme){
+		int save(string ficolorImgme){
 			// Open new output binary stream
-			ofstream bm_stream(fimyImgme, ios::binary);
+			ofstream bm_stream(ficolorImgme, ios::binary);
 
 			// Write the header information
 			bm_stream << bm_head.file_type[0];
@@ -423,36 +423,56 @@ class BitMap
  * @result out: The output bitmap object
  */
 
-int main(int argc, char** argv)
+int main(int argc, char const* argv[])
 {
 	// Check if all the command line arguments are provided
-	if (argc != 6){
+	if (argc != 4){
 		cout << "Please provide the path to ALL of the following, in that order: " << endl;
 		cout << endl;
-		cout << "- Input .bmp file" << endl;
-		cout << "- Destination of flipped image" << endl;
-		cout << "- Destination of grayscale image with averaging" << endl;
-		cout << "- Destination of grayscale image with minimum" << endl;
-		cout << "- Destination of grayscale image with maximum" << endl;
+		cout << "- Input coloured image (.bmp file)" << endl;
+		cout << " -Input black and white image (.bmp ) file "<<endl;
+		cout << "- Destination folder" << endl;
 		cout << endl << "Exiting" << endl;
 		return -1;
 	}
 
 	// Define and read the .bmp file
-	BitMap myImg;
-	myImg.read(argv[1]);
-	myImg.save("./assignment-1/output_images/read_img.bmp");
+	BitMap colorImg, bwImg;
+
+	string fileNameColorImage,fileNameBWImage;
+	
+	stringstream ss1(argv[1]);
+	while(getline(ss1,fileNameColorImage,'/'));
+	fileNameColorImage = fileNameColorImage.substr(0,fileNameColorImage.length() - 4);
+
+	stringstream ss2(argv[2]);
+	while(getline(ss2,fileNameBWImage,'/'));
+	fileNameBWImage = fileNameBWImage.substr(0,fileNameBWImage.length() - 4);
 	// Display the header information
-	myImg.display_header_information();
 
-	// Flip and save the image
-	myImg.flip_bitmap().save(argv[2]);
 
-	// Convert the image to grayscale and save it
-	// myImg.bgr_to_gray("avg").save(argv[3]);
-	myImg.scale().save(argv[3]);
-	// myImg.bgr_to_gray("min").save(argv[4]);
-	// myImg.bgr_to_gray("max").save(argv[5]);
+	colorImg.read(argv[1]);
+	cout<<"for image "<<fileNameColorImage<<endl;
+	colorImg.display_header_information();
+	cout<<endl;
+	string path_color = string(argv[3]) + "/" + fileNameColorImage;
+	colorImg.flip_bitmap().save(path_color+"_flip.bmp");
+	colorImg.bgr_to_gray("avg").save(path_color+"_grey_avg.bmp");
+	colorImg.bgr_to_gray("min").save(path_color+"_grey_min.bmp");
+	colorImg.bgr_to_gray("max").save(path_color+"_grey_max.bmp");
+	colorImg.rotate90clockwise().save(path_color + "_rotate90.bmp");
+	colorImg.rotate45clockwise().save(path_color+"_rotate45.bmp");
+	colorImg.scale().save(path_color + "_scaled.bmp");
+
+	bwImg.read(argv[2]);
+	cout<<endl;
+	cout<<"for image "<<fileNameBWImage<<endl;
+	bwImg.display_header_information();
+	string path_bw = string(argv[3]) + "/" + fileNameBWImage;
+	bwImg.flip_bitmap().save(path_bw+"_flip.bmp");
+	bwImg.rotate90clockwise().save(path_bw + "_rotate90.bmp");
+	bwImg.rotate45clockwise().save(path_bw+"_rotate45.bmp");
+	bwImg.scale().save(path_bw + "_scaled.bmp");
 
 	return 0;
 }
