@@ -63,12 +63,16 @@ class BitMap
       bm_stream.write((char *)&to_write, sizeof(T));
     }
     template<typename T>
-    T*** get3Dmat(int row, int col, int depth) {
+    T*** get3Dmat(int row, int col, int depth, T val=0) {
       T*** mat = new T** [row];
       for (int i = 0; i < row; i++){
         mat[i] = new T* [col];
-        for (int j = 0; j < col; j++)
+        for (int j = 0; j < col; j++){
           mat[i][j] = new T [depth];
+					for(int k = 0;k<depth;k++){
+						mat[i][j][k] = val;
+					}
+				}
 			}
       return mat;
     }
@@ -331,6 +335,34 @@ class BitMap
 		}
 		return out;
 	}
+	BitMap rotate45clockwise(){
+		BitMap out = BitMap(*this);
+		int width = bm_head.width;
+		int height = bm_head.height;
+		// float scale = (width + height)/4.0;
+		float scale = 1;
+		for (int i = 0; i < width; i++)
+		{
+			float x2 = i - width/2.0;
+			for (int j = 0; j < height; j++)
+			{
+				float y2 = j - height/2.0;
+				int x = width/2.0 + (x2 - y2) * scale;
+				int y = height/2.0 + (x2 + y2) * scale;
+				for (int k = 0; k < (out.isColor?3:1); k++)
+				{
+					if( x < width && x >= 0 && y <height && y >= 0) {
+						out.bm_pixelValues[i][j][k] = bm_pixelValues[x][y][k];
+					}else{
+						out.bm_pixelValues[i][j][k] = 0;
+					}
+				}
+				
+			}
+			
+		}
+		return out;
+	}
 	// Function to display header information in a structured manner
 	void display_header_information(){
 		cout << endl << "HEADER INFORMATION ";
@@ -397,10 +429,10 @@ int main(int argc, char** argv)
 	myImg.flip_bitmap().save(argv[2]);
 
 	// Convert the image to grayscale and save it
-	myImg.bgr_to_gray("avg").save(argv[3]);
-	myImg.rotate90clockwise().save(argv[4]);
+	// myImg.bgr_to_gray("avg").save(argv[3]);
+	myImg.rotate45clockwise().save(argv[3]);
 	// myImg.bgr_to_gray("min").save(argv[4]);
-	myImg.bgr_to_gray("max").save(argv[5]);
+	// myImg.bgr_to_gray("max").save(argv[5]);
 
 	return 0;
 }
