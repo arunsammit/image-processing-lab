@@ -1,9 +1,9 @@
 #include <opencv2/opencv.hpp>
 #include <bits/stdc++.h>
 #include <filesystem>
-#include "EqualizeTransform.hpp"
-#include "ImagePath.hpp"
-#include "CVcommonTask.hpp"
+#include "lib/EqualizeTransform.hpp"
+#include "lib/ImagePath.hpp"
+#include "lib/CVcommonTask.hpp"
 
 using namespace std;
 using namespace cv;
@@ -16,7 +16,7 @@ Mat equalize(Mat input){
   return applyToEach(input, [&](int val){
 
     return et.transform(val);
-    
+
   });
 }
 
@@ -24,7 +24,7 @@ int main(int argc, char const *argv[])
 {
 
   String input_image_dir, output_image_dir;
-  if(argc < 3){
+  if(argc != 3){
     cout<<"usage: ./histogram_equalization <input_directory> <output_directory/>\n";
     return -1;
   } else {
@@ -39,6 +39,7 @@ int main(int argc, char const *argv[])
 
   for (const auto & entry : fs::directory_iterator(input_image_dir)){
     Mat input_image = imread(entry.path());
+    Mat inputHistogram = getHistPlot(input_image);
     if(input_image.empty()){
       cout<<"can't open the image"<<endl;
       return -1;
@@ -49,8 +50,13 @@ int main(int argc, char const *argv[])
     string image_extension = imPath.getExtension();
 
     Mat out = equalize(input_image);
+    Mat outputHistogram = getHistPlot(out);
+
     string output_image_name = image_name + "_equalized";
+    imshow(output_image_name + "_histogram", outputHistogram);
+    imshow(image_name +"_histogram", inputHistogram);
     imwrite(output_image_dir + output_image_name + image_extension, out);
   }
+  waitKey(0);
   return 0;
 }

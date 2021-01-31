@@ -1,8 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <filesystem>
-#include "EqualizeTransform.hpp"
-#include "CVcommonTask.hpp"
-#include "ImagePath.hpp"
+#include "lib/EqualizeTransform.hpp"
+#include "lib/CVcommonTask.hpp"
+#include "lib/ImagePath.hpp"
 
 using namespace std;
 using namespace cv;
@@ -36,6 +36,10 @@ int main(int argc, char const *argv[])
     }
 
     Mat inputImage = imread(inputImagePath);
+
+    Mat inuputHistogram = getHistPlot(inputImage);
+    imshow("input histogram", inuputHistogram);
+
     Mat targetImage = imread(targetImagePath);
     ImagePath inputImagePathObj(inputImagePath), targetImagePathObj(targetImagePath);
     string inputImageName = inputImagePathObj.getImageName();
@@ -44,7 +48,11 @@ int main(int argc, char const *argv[])
 
     Mat outputImage = match(inputImage, targetImage);
 
+    Mat outputHistogram = getHistPlot(outputImage);
+    imshow("output histogram", outputHistogram);
+
     imwrite(outputImageDir + outputImageName + imageExtension, outputImage);
+    waitKey(0);
   }
   return 0;
 }
