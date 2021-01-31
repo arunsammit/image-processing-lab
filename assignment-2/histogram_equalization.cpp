@@ -3,6 +3,7 @@
 #include <filesystem>
 #include "EqualizeTransform.hpp"
 #include "ImagePath.hpp"
+#include "CVcommonTask.hpp"
 
 using namespace std;
 using namespace cv;
@@ -12,20 +13,11 @@ Mat equalize(Mat input){
   Mat out = input.clone();
   int maxPixelValue = (1<<8) - 1;
   EqualizeTransform et(input,maxPixelValue);
-  for (int i = 0; i < input.rows; i++)
-  {
-    for (int  j = 0; j < input.cols; j++)
-    {
-      Vec3b intensity = input.at<Vec3b>(i,j);
-      Vec3b& output_intensity = out.at<Vec3b>(i,j);
-      for (int k = 0; k < input.channels(); k++)
-      {
-        output_intensity.val[k] = et.transform(intensity.val[k]);
-      }
-      
-    }
-  }
-  return out;
+  return applyToEach(input, [&](int val){
+
+    return et.transform(val);
+    
+  });
 }
 
 int main(int argc, char const *argv[])
