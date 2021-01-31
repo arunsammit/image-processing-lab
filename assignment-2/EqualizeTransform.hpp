@@ -11,5 +11,6 @@ private:
   vector<int> transformation;
 public:
   int transform(int);
+  int invTransform(int);
   EqualizeTransform(Mat,int);
 };

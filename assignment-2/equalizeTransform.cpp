@@ -1,4 +1,5 @@
 #include "EqualizeTransform.hpp"
+#include<algorithm>
 EqualizeTransform::EqualizeTransform(Mat input, int maxIntensityVal){
   EqualizeTransform::maxIntensityVal =  maxIntensityVal;
   transformation.resize(maxIntensityVal + 1);
@@ -41,4 +42,23 @@ int EqualizeTransform::transform(int val){
   } else {
     throw std::invalid_argument("val can't be greater than "+ to_string(transformation.size()));
   }
+}
+
+int EqualizeTransform::invTransform(int val){
+  vector<int>::iterator it = lower_bound(transformation.begin(), transformation.end(), val);
+  if (it == transformation.end()) {
+    return (transformation.end() - 1) - transformation.begin();
+  } else if (it == transformation.begin()) {
+    return 0;
+  } else {
+
+    if (*it - val < *(it-1) - val) {
+      return it - transformation.begin();
+    }
+    else {
+      return (it - 1) - transformation.begin();
+    }
+    
+  }
+
 }
