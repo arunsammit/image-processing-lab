@@ -2,6 +2,7 @@
 #include <bits/stdc++.h>
 #include <filesystem>
 #include "EqualizeTransform.hpp"
+#include "ImagePath.hpp"
 
 using namespace std;
 using namespace cv;
@@ -50,14 +51,13 @@ int main(int argc, char const *argv[])
       cout<<"can't open the image"<<endl;
       return -1;
     }
-    stringstream ss1(entry.path());
-    string image_name;
+    
+    ImagePath imPath(entry.path());
+    string image_name = imPath.getImageName();
+    string image_extension = imPath.getExtension();
 
-    while(getline(ss1,image_name,'/'));
-    String image_extension = image_name.substr(image_name.find('.'));
-    image_name = image_name.substr(0,image_name.find('.'));
     Mat out = equalize(input_image);
-    String output_image_name = image_name + "_equalized";
+    string output_image_name = image_name + "_equalized";
     imwrite(output_image_dir + output_image_name + image_extension, out);
   }
   return 0;
