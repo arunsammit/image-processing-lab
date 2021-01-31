@@ -2,4 +2,5 @@
 *.~*
 *.gz
 *.out
-*build/*
+*build*
+assignment-2/equalise.cpp
