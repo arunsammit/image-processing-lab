@@ -52,6 +52,9 @@ int main(int argc, char const *argv[])
     imshow("output histogram", outputHistogram);
 
     imwrite(outputImageDir + outputImageName + imageExtension, outputImage);
+    imwrite(outputImageDir + outputImageName + "_histogram.jpg" + imageExtension,outputHistogram);
+    imwrite(outputImageDir + inputImageName + "_histogram.jpg",inuputHistogram);
+    imwrite(outputImageDir + targetImagePathObj.getImageName() + "_histogram.jpg",getHistPlot(targetImage));
     waitKey(0);
   }
   return 0;

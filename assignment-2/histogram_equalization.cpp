@@ -54,7 +54,9 @@ int main(int argc, char const *argv[])
 
     string output_image_name = image_name + "_equalized";
     imshow(output_image_name + "_histogram", outputHistogram);
+    imwrite(output_image_dir + output_image_name + "_histogram.jpg", outputHistogram);
     imshow(image_name +"_histogram", inputHistogram);
+    imwrite(output_image_dir + image_name + "_histogram.jpg", inputHistogram);
     imwrite(output_image_dir + output_image_name + image_extension, out);
   }
   waitKey(0);
