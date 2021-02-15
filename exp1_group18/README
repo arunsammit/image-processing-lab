@@ -1,0 +1,6 @@
+Steps to run code:
+
+1) "g++ main.cpp"
+2) "./a.out ./input_images/cameraman.bmp ./input_images/lena_colored_256.bmp ."
+
+Make sure you are inside the exp1_group18 folder before running
