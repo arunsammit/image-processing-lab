@@ -14,20 +14,11 @@ using namespace std;
 using namespace std::complex_literals;
 typedef std::complex<double> comp;
 
-auto images = std::vector<cv::Mat>();
+vector<cv::Mat> images;
 int imagePos, filterPos, freqPos;
 
 namespace FFT
 {
-    vector<vector<comp>> &transpose(vector<vector<comp>> &X)
-    {
-        for (size_t i = 0; i < N; i++)
-        {
-            for (size_t j = 0; j < i; j++)
-                swap(X[i][j], X[j][i]);
-        }
-        return X;
-    }
     vector<comp> transform1d(const vector<comp> x)
     {
         int n = x.size();
@@ -53,13 +44,14 @@ namespace FFT
         vector<comp> ip(sz);
         for (size_t i = 0; i < X.size(); i++)
             ip[i] = X[(sz-i)%sz]/((double)sz);
-        vector<comp> op = FFT::transform1d(X);
+        vector<comp> op = FFT::transform1d(ip);
         return op;
     }
 
-    vector<vector<double>> shift2d(const vector<vector<comp>> &X)
+    vector<vector<comp>> shift2d(const vector<vector<comp>> &X)
     {
-        vector<vector<double>> out(N,vector<double>(N));
+        int si = X.size(), sj = X[0].size();
+        vector<vector<comp>> out(si,vector<comp>(sj));
         for (size_t i = 0; i < N; i++)
         {
             for (size_t j = 0; j < N; j++)
@@ -108,8 +100,8 @@ namespace FFT
             }
             
         }
-        X = FFT::transform2d(X);
-        return FFT::toMat(X);
+        vector<vector<comp>> op = FFT::transform2d(ip);
+        return FFT::toMat(op);
         
     }
 
@@ -150,118 +142,97 @@ namespace FFT
 
 namespace Filter
 {
+    double Distance(int i,int j, int si, int sj){
+        return abs(comp((si / 2 + i) % si - si / 2, (sj / 2 + j) % sj - sj / 2));
+    }
+    vector<vector<comp>> ApplyFilter(const vector<vector<comp>>& X, function<comp(double)> f){
+        vector<vector<comp>> out(N, vector<comp>(N, 0));
+        int si = X.size(), sj = X[0].size();
+        for (size_t i = 0; i < N; i++)
+        {
+            for (size_t j = 0; j < N; j++)
+            {
+                double distance = Filter::Distance(i, j, si, sj);
+                out[i][j] = X[i][j] * f(distance);
+            }
+        }
+        return out;
+    }
     namespace LowPass
     {
-
-        valarray<valarray<comp>> ideal(const valarray<valarray<comp>> X, int cutoff)
+        enum _
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    if (abs(comp((N / 2 + i) % N - N / 2, (N / 2 + j) % N - N / 2)) > cutoff)
-                    {
-                        ret[i][j] = 0;
-                    }
-                    else
-                    {
-                        ret[i][j] = X[i][j];
-                    }
-                }
-            }
-            return ret;
+            Ideal = 0,
+            Gaussian,
+            Butterworth,
+        };
+
+        vector<vector<comp>> ideal(const vector<vector<comp>>& X, double cutoff)
+        {
+            function<comp(double)> Fideal = [&](double distance) -> comp {
+                return (distance<=cutoff)?1:0;
+            };
+            return Filter::ApplyFilter(X, Fideal);
         }
 
-        valarray<valarray<comp>> gaussian(const valarray<valarray<comp>> X, int stdDev)
+        vector<vector<comp>> gaussian(const vector<vector<comp>>& X, int sigma)
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    ret[i][j] = X[i][j] *
-                                exp(-(pow((N / 2 + i) % N - N / 2, 2) + pow((N / 2 + j) % N - N / 2, 2)) / (2 * pow(stdDev, 2)));
-                }
-            }
-            return ret;
+            function<comp(double)> Fgaussian = [&](double distance) -> comp {
+                return exp(-distance * distance / (2 * sigma * sigma));
+            };
+            return Filter::ApplyFilter(X, Fgaussian);
         }
 
-        valarray<valarray<comp>> butterworth(const valarray<valarray<comp>> X, int cutoff, int order = 1)
+        vector<vector<comp>> butterworth(const vector<vector<comp>> X, int cutoff, int order = 1)
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    ret[i][j] = X[i][j] /
-                                (1 + pow(abs(comp((N / 2 + i) % N - N / 2, (N / 2 + j) % N - N / 2)) / cutoff, 2 * order));
-                }
-            }
-            return ret;
+            function<comp(double)> Fbuttorworth = [&](double distance) -> comp {
+                return 1/(1 + pow(distance/cutoff ,2*order));
+            };
+            return Filter::ApplyFilter(X, Fbuttorworth);
         }
     };
     namespace HighPass
     {
-
-        valarray<valarray<comp>> ideal(const valarray<valarray<comp>> X, int cutoff)
+        enum _
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    if (abs(comp((N / 2 + i) % N - N / 2, (N / 2 + j) % N - N / 2)) > cutoff)
-                    {
-                        ret[i][j] = X[i][j];
-                    }
-                    else
-                    {
-                        ret[i][j] = 0;
-                    }
-                }
-            }
-            return ret;
+            Ideal = 3,
+            Gaussian,
+            Butterworth,
+        };
+        vector<vector<comp>> ideal(const vector<vector<comp>> &X, double cutoff)
+        {
+            function<comp(double)> Fideal = [&](double distance) -> comp {
+                return (distance > cutoff) ? 1 : 0;
+            };
+            return Filter::ApplyFilter(X, Fideal);
         }
 
-        valarray<valarray<comp>> gaussian(const valarray<valarray<comp>> X, int stdDev)
+        vector<vector<comp>> gaussian(const vector<vector<comp>> &X, int sigma)
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    ret[i][j] = X[i][j] *
-                                (1 - exp(-(pow((N / 2 + i) % N - N / 2, 2) + pow((N / 2 + j) % N - N / 2, 2)) / (2 * pow(stdDev, 2))));
-                }
-            }
-            return ret;
+            function<comp(double)> Fgaussian = [&](double distance) -> comp {
+                return 1 - exp(-distance * distance / (2 * sigma * sigma));
+            };
+            return Filter::ApplyFilter(X, Fgaussian);
         }
 
-        valarray<valarray<comp>> butterworth(const valarray<valarray<comp>> X, int cutoff, int order = 1)
+        vector<vector<comp>> butterworth(const vector<vector<comp>> X, int cutoff, int order = 1)
         {
-            auto ret = valarray<valarray<comp>>(valarray<comp>(N), N);
-            for (auto i = 0; i != N; ++i)
-            {
-                for (auto j = 0; j != N; ++j)
-                {
-                    ret[i][j] = X[i][j] /
-                                (1 + pow(cutoff / abs(comp((N / 2 + i) % N - N / 2, (N / 2 + j) % N - N / 2)), 2 * order));
-                }
-            }
-            return ret;
+            function<comp(double)> Fbuttorworth = [&](double distance) -> comp {
+                return 1 / (1 + pow(cutoff / distance, 2 * order));
+            };
+            return Filter::ApplyFilter(X, Fbuttorworth);
         }
     };
 };
 
 static void callBack(int, void *)
 {
-    auto display = cv::Mat();
-    auto input = images.at(imagePos);
-    auto inputFFT = FFT::transform2d(input);
+    cv::Mat display;
+    cv::Mat input = images.at(imagePos);
+    vector<vector<comp>> inputFFT = FFT::transform2d(input);
 
     auto output = cv::Mat();
-    auto outputFFT = valarray<valarray<comp>>();
+    vector<vector<comp>> outputFFT;
 
     switch (filterPos)
     {
