@@ -19,26 +19,67 @@ int imagePos, filterPos, freqPos;
 
 namespace FFT
 {
-    vector<comp> transform1d(const vector<comp> x)
+    cv::Mat toMat(const vector<vector<comp> > &X)
+    {
+        cv::Mat output(X.size(), X[0].size(), CV_8UC1);
+        double max_val = 1, min_val = 0;
+        for (size_t i = 0; i < X.size(); i++)
+        {
+            for (size_t j = 0; j < X.at(i).size(); j++)
+            {
+                max_val = max( X.at(i).at(j).real(), max_val);
+                min_val = min(X.at(i).at(j).real(), min_val);
+            }
+            
+        }
+        
+        for (size_t i = 0; i < X.size(); i++)
+        {
+            for (size_t j = 0; j < X.at(i).size(); j++)
+            {
+                output.at<uchar>(i, j) =  255 * (X.at(i).at(j).real() - min_val)/(max_val - min_val) ;
+            }
+        }
+        return output;
+    }
+
+    vector<vector<comp>> toVector(cv::Mat x){
+        vector<vector<comp>> res(x.rows, vector<comp>(x.cols));
+        for (int i = 0; i < x.rows; i++)
+        {
+            for (int j = 0; j < x.cols; j++)
+            {
+                res.at(i).at(j) = x.at<uchar>(i,j);
+            }
+        }
+        return res;
+    }
+    vector<comp> transform1d(const vector<comp>& x)
     {
         int n = x.size();
         if (n == 1)
             return x;
-        vector<comp> X(n);
         vector<comp> even, odd;
-        for (size_t i = 0; i < n; i++)
+        for (int i = 0; i < n; i++)
         {
-            even.push_back(x[2*i]);
-            odd.push_back(x[2*i+1]);
+            if(i%2 == 1){
+                odd.push_back(x.at(i));
+            }else{
+                even.push_back(x.at(i));
+            }
         }
+        vector<comp> even_t = transform1d(even);
+        vector<comp> odd_t = transform1d(odd);
+        vector<comp> X;
         for (size_t k = 0; k < n; k++)
         {
-            X[k] = even[(k % (n / 2))] + exp(-2i * (pi * k / n)) * odd[(k % (n / 2))];
+            comp curr = even_t.at((k % (even_t.size()))) + exp(-2i * (pi * k / n)) * odd_t.at((k % (odd_t.size())));
+            X.push_back(curr);
         }
         return X;
     }
 
-    vector<comp> iTransform1d(vector<comp> X)
+    vector<comp> iTransform1d(const vector<comp>& X)
     {
         int sz = X.size();
         vector<comp> ip(sz);
@@ -52,43 +93,44 @@ namespace FFT
     {
         int si = X.size(), sj = X[0].size();
         vector<vector<comp>> out(si,vector<comp>(sj));
-        for (size_t i = 0; i < N; i++)
+        for (size_t i = 0; i < si; i++)
         {
-            for (size_t j = 0; j < N; j++)
+            for (size_t j = 0; j < sj; j++)
             {
-                out[i][j] = log( 1 + abs( X[ (i - N/2 + N)%N ][ (j - N/2 + N)%N ] ) );
+                out[i][j] = log( 1 + abs( X[ (i - si/2 + si)%si ][ (j - sj/2 + sj)%sj ] ) );
             }
         }
         return out;
     }
 
 
-    vector<vector<comp>> transform2d(vector<vector<comp>> x)
+    vector<vector<comp>> transform2d(const vector<vector<comp>>& x)
     {
-        for (size_t i = 0; i < N; i++)
+        vector<vector<comp>> X;
+        for (size_t i = 0; i < x.size(); i++)
         {
-            x[i] = FFT::transform1d(x[i]);
+            X.push_back(FFT::transform1d(x.at(i)));
         }
-        for (size_t i = 0; i < N; i++)   
+        for (size_t j = 0; j < X.at(0).size(); j++)   
         {
-            vector<comp> temp(N);
-            for (size_t j = 0; j < N; j++)
+            vector<comp> temp;
+            for (size_t i = 0; i < X.size(); i++)
             {
-                temp[j] = x[i][j]; 
+                temp.push_back(X.at(i).at(j)); 
             }
-            temp = FFT::transform1d(temp);
-            for (size_t j = 0; j < N; j++)
+            vector<comp> tempFFT = FFT::transform1d(temp);
+            for (size_t i = 0; i < X.size(); i++)
             {
-                x[i][j] = temp[j];
+                X.at(i).at(j) = tempFFT.at(i);
             }
         }
-        return x;
+        return X;
     }
-    vector<vector<comp>> transform2d(cv::Mat x){
+    vector<vector<comp>> transform2d(const cv::Mat& x){
         return transform2d(FFT::toVector(x));
     }
 
-    cv::Mat inverseTransform2d(vector<vector<comp>> X)
+    cv::Mat iTransform2d(const vector<vector<comp>>& X)
     {
         int si = X.size(),sj = X[0].size(); 
         vector<vector<comp>> ip(si,vector<comp>(sj));
@@ -105,39 +147,6 @@ namespace FFT
         
     }
 
-    cv::Mat toMat(const vector<vector<comp>> &X)
-    {
-        auto x = cv::Mat(X.size(), X[0].size(), CV_8UC1);
-        double max_val;
-        for (size_t i = 0; i < X.size(); i++)
-        {
-            for (size_t j = 0; j < X[i].size(); j++)
-            {
-                max_val = max( X[i][j].real(), max_val);
-            }
-            
-        }
-        
-        for (size_t i = 0; i < X.size(); i++)
-        {
-            for (size_t j = 0; j < X[i].size(); j++)
-            {
-                x.at<int>(i, j) = (255 / max_val) * (X[i][j].real());
-            }
-        }
-        return x;
-    }
-
-    vector<vector<comp>> toVector(cv::Mat x){
-        vector<vector<comp>> res(x.rows, vector<comp>(x.cols));
-        for (int i = 0; i < x.rows; i++)
-        {
-            for (int j = 0; j < x.cols; j++)
-            {
-                res[i][j] = x.at<int>(i,j);
-            }
-        }
-    }
 }
 
 namespace Filter
@@ -160,12 +169,6 @@ namespace Filter
     }
     namespace LowPass
     {
-        enum _
-        {
-            Ideal = 0,
-            Gaussian,
-            Butterworth,
-        };
 
         vector<vector<comp>> ideal(const vector<vector<comp>>& X, double cutoff)
         {
@@ -193,12 +196,6 @@ namespace Filter
     };
     namespace HighPass
     {
-        enum _
-        {
-            Ideal = 3,
-            Gaussian,
-            Butterworth,
-        };
         vector<vector<comp>> ideal(const vector<vector<comp>> &X, double cutoff)
         {
             function<comp(double)> Fideal = [&](double distance) -> comp {
@@ -230,64 +227,54 @@ static void callBack(int, void *)
     cv::Mat display;
     cv::Mat input = images.at(imagePos);
     vector<vector<comp>> inputFFT = FFT::transform2d(input);
-
-    auto output = cv::Mat();
     vector<vector<comp>> outputFFT;
-
+    double cutoff_freq = 1 << (freqPos + 3); 
     switch (filterPos)
     {
-    case Filter::LowPass::Ideal:
-        outputFFT = Filter::LowPass::ideal(inputFFT, 20 * (freqPos + 1));
+    case 0:
+        outputFFT = Filter::LowPass::ideal(inputFFT, cutoff_freq);
         break;
-    case Filter::HighPass::Ideal:
-        outputFFT = Filter::HighPass::ideal(inputFFT, 20 * (freqPos + 1));
+    case 1:
+        outputFFT = Filter::LowPass::gaussian(inputFFT, cutoff_freq);
         break;
-    case Filter::LowPass::Gaussian:
-        outputFFT = Filter::LowPass::gaussian(inputFFT, 20 * (freqPos + 1));
+    case 2:
+        outputFFT = Filter::LowPass::butterworth(inputFFT, cutoff_freq);
         break;
-    case Filter::HighPass::Gaussian:
-        outputFFT = Filter::HighPass::gaussian(inputFFT, 20 * (freqPos + 1));
+    case 3:
+        outputFFT = Filter::HighPass::ideal(inputFFT, cutoff_freq);
         break;
-    case Filter::LowPass::Butterworth:
-        outputFFT = Filter::LowPass::butterworth(inputFFT, 20 * (freqPos + 1));
+    case 4:
+        outputFFT = Filter::HighPass::gaussian(inputFFT, cutoff_freq);
         break;
-    case Filter::HighPass::Butterworth:
-        outputFFT = Filter::HighPass::butterworth(inputFFT, 20 * (freqPos + 1));
+    case 5:
+        outputFFT = Filter::HighPass::butterworth(inputFFT, cutoff_freq);
         break;
     }
+    cv::Mat inputFFTMat = FFT::toMat(FFT::shift2d(inputFFT));
+    cv::Mat outputFFTMat = FFT::toMat(FFT::shift2d(outputFFT));
+    cv::Mat iFFToutputFFT = FFT::iTransform2d(outputFFT);
+    cv::Mat ip_side, op_side; 
     cv::vconcat(
         input,
-        FFT::toMat(FFT::shift2d(inputFFT)),
-        input);
+        inputFFTMat,
+        ip_side
+        );
     cv::vconcat(
-        FFT::inverseTransform2d(outputFFT),
-        FFT::toMat(FFT::shift2d(outputFFT)),
-        output);
-    cv::hconcat(input, output, display);
+        iFFToutputFFT,
+        outputFFTMat,
+        op_side
+        );
+    cv::hconcat(ip_side, op_side, display);
     cv::imshow("Frequency Filtering", display);
 }
 
 int main()
 {
-    for (auto &file : std::filesystem::directory_iterator("."))
+    for (auto &file : std::filesystem::directory_iterator("./input_images"))
     {
-        auto imagePath = (file.path()).u8string();
-        ;
-        if (imagePath.find(".jpg") != std::string::npos)
-        {
-            auto img = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
-            if (img.rows == N && img.cols == N)
-                images.push_back(img);
-        }
+        cv::Mat img = cv::imread(file.path(), 0);
+        images.emplace_back(img);
     }
-
-    /*for (auto& file : std::filesystem::directory_iterator("./exp_4_images")) {
-		cout << file.path() << endl;
-		auto imp_path = 
-		cout << imp_path.find(".jpg") << endl;
-
-	}*/
-
     cv::namedWindow("Frequency Filtering");
     cv::createTrackbar(
         "Image",
@@ -305,7 +292,7 @@ int main()
         "Cutoff frequency",
         "Frequency Filtering",
         &freqPos,
-        9,
+        5,
         callBack);
     callBack(0, NULL);
     cv::waitKey(0);
