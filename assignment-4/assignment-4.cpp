@@ -3,8 +3,6 @@
 #include <complex>
 #include <filesystem>
 #include <iostream>
-#include <numeric>
-#include <valarray>
 #include <vector>
 
 #define N 512
@@ -265,6 +263,7 @@ static void callBack(int, void *)
         op_side
         );
     cv::hconcat(ip_side, op_side, display);
+    cv::imwrite("output_images/output.jpg",display);
     cv::imshow("Frequency Filtering", display);
 }
 
