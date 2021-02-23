@@ -15,6 +15,8 @@ typedef std::complex<double> comp;
 vector<cv::Mat> images;
 int imagePos, filterPos, freqPos;
 
+string output_image_file;
+
 namespace FFT
 {
     cv::Mat toMat(const vector<vector<comp> > &X)
@@ -263,13 +265,18 @@ static void callBack(int, void *)
         op_side
         );
     cv::hconcat(ip_side, op_side, display);
-    cv::imwrite("output_images/output.jpg",display);
+    cv::imwrite(output_image_file, display);
     cv::imshow("Frequency Filtering", display);
 }
 
-int main()
+int main(int argc, char const *argv[])
 {
-    for (auto &file : std::filesystem::directory_iterator("./input_images"))
+    if(argc != 3){
+        cout<<"usage <path to input images folder> <path to output imager> \n";
+        return -1;
+    }
+    output_image_file = argv[2];
+    for (auto &file : std::filesystem::directory_iterator(argv[1]))
     {
         cv::Mat img = cv::imread(file.path(), 0);
         images.emplace_back(img);
