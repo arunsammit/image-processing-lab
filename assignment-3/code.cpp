@@ -1,7 +1,5 @@
 #include <bits/stdc++.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
 using namespace cv;
 using namespace std;
 
@@ -12,6 +10,42 @@ std::string directory[17];
 
 Mat input;
 
+Mat linear_scale(vector<vector<int>>& temp_op){
+	int i = 0;
+	int j = 0;
+	cv::Mat output(temp_op.size(), temp_op[0].size(), CV_8UC1);
+	int min_val = INT_MAX, max_val = INT_MIN;
+	while (i < temp_op.size())
+	{
+		j = 0;
+		while (j < temp_op[i].size())
+		{
+			min_val = min(min_val, temp_op[i][j]);
+			max_val = max(max_val, temp_op[i][j]);
+			j++;
+		}
+		i++;
+	}
+	i = 0;
+	while (i < temp_op.size())
+	{
+		j = 0;
+		while (j < temp_op[i].size())
+		{
+			if (max_val != min_val)
+			{
+				output.at<uchar>(i, j) = (255 * (temp_op[i][j] - min_val)) / (max_val - min_val);
+			}
+			else
+			{
+				output.at<uchar>(i, j) = 0;
+			}
+			j++;
+		}
+		i++;
+	}
+	return output;
+}
 
 Mat filt_mean() {
 
@@ -132,14 +166,13 @@ Mat filt_prewitt() {
             cnt1 = width/2;
 		i++;
     }
-
-	Mat output = input.clone();
+	vector<vector<int>> temp_op(input.rows, vector<int>(input.cols, 0));
 	i=0;j=0;
 	while(i < input.rows) {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -158,14 +191,14 @@ Mat filt_prewitt() {
 				x++;
 			}
 			int value = sqrt(value1*value1+value2*value2);
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
-	return output;
+	return linear_scale(temp_op);
 }
-Mat sobelH() {
+Mat sobelV() {
 	
 	double sigma = 0.75;
 	double k = 1/(sqrt(2.0*M_PI)*sigma);
@@ -208,13 +241,13 @@ Mat sobelH() {
 		i++;
     }
 
-    Mat output = input.clone();
+	vector<vector<int>> temp_op(input.rows, vector<int>(input.cols, 0));
 	i=0;j=0;
 	while(i < input.rows) {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -230,23 +263,22 @@ Mat sobelH() {
 				}
 				x++;
 			}
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
-	return output;
+	return linear_scale(temp_op);
 }
 
-Mat sobelV() {
+Mat sobelH() {
 	double sigma = 0.75;
 	double k = 1/(sqrt(2.0*M_PI)*sigma);
 	double r;
 	double p[width_max];
 	double q[width_max];
 	double minv = 100;
-	
-	
+
 	int i=0;
 	int j=0;
 	while(i<width) {
@@ -280,13 +312,13 @@ Mat sobelV() {
 		i++;
     }
 
-    Mat output = input.clone();
+	vector<vector<int>> temp_op(input.rows, vector<int>(input.cols, 0));
 	i=0;j=0;
 	while(i < input.rows) {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -302,20 +334,20 @@ Mat sobelV() {
 				}
 				x++;
 			}
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
-	return output;
+	return linear_scale(temp_op);
 }
 
 Mat filt_lap() {
 	int value;
 	int size = width*width;
 	int kernel[width_max][width_max];
+	vector<vector<int>> temp_op(input.rows,vector<int>(input.cols,0));
 	
-	Mat output = input.clone();
 	memset(kernel, -1, sizeof(kernel));
 	kernel[width/2][width/2] = size-1;
 
@@ -327,7 +359,7 @@ Mat filt_lap() {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -343,11 +375,12 @@ Mat filt_lap() {
 				}
 				x++;
 			}
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
+	Mat output = linear_scale(temp_op);
 	return output;
 }
 
@@ -412,13 +445,13 @@ Mat sobelD(){
 	int j=0;
 	int width = 3;
 
-	Mat output = input.clone();
+	vector<vector<int>> temp_op(input.rows, vector<int>(input.cols, 0));
 	i=0;j=0;
 	while(i < input.rows) {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -434,12 +467,12 @@ Mat sobelD(){
 				}
 				x++;
 			}
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
-	return output;
+	return linear_scale(temp_op);
 }
 
 Mat filt_LoG() {
@@ -458,13 +491,13 @@ Mat filt_LoG() {
 	int j=0;
 	int width = 7;
 
-	Mat output = input.clone();
+	vector<vector<int>> temp_op(input.rows, vector<int>(input.cols, 0));
 	i=0;j=0;
 	while(i < input.rows) {
 		j=0;
 		while(j < input.cols) {
 			if(!(i-width/2>=0 and i+width/2<input.rows and j-width/2>=0 and j+width/2<input.cols)) {
-				output.at<uchar>(i, j) = 0;
+				temp_op[i][j] = 0;
 				j++;
 		    	continue;
 			}
@@ -480,12 +513,12 @@ Mat filt_LoG() {
 				}
 				x++;
 			}
-			output.at<uchar>(i, j) = (value > 255) ? 255 : ((value<0) ? 0 : value);
+			temp_op[i][j] = value;
 			j++;
 		}
 		i++;
 	}
-	return output;
+	return linear_scale(temp_op);
 }
 
 
@@ -517,11 +550,11 @@ static void on_filter_change(int, void*) {
 	}
 	else if(filter == 7)
 	{
-		output = sobelH();
+		output = sobelV();
 	}
 	else if(filter == 8)
 	{
-		output = sobelV();
+		output = sobelH();
 	}
 	else if(filter == 9)
 	{
@@ -568,11 +601,11 @@ int main() {
 	directory[16] = "Normal_Images/walkbridge.jpg";
 
 	namedWindow("Tracker", WINDOW_AUTOSIZE);
-    createTrackbar("File Name", "Tracker", &file_id, file_max, on_file_change);
-    createTrackbar("Kernel width", "Tracker", &width, width_max, on_width_change);
-    createTrackbar("Filter Type", "Tracker", &filter, filter_max, on_filter_change); 
+    cv::createTrackbar("File Name", "Tracker", &file_id, file_max, on_file_change);
+    cv::createTrackbar("Kernel width", "Tracker", &width, width_max, on_width_change);
+    cv::createTrackbar("Filter Type", "Tracker", &filter, filter_max, on_filter_change); 
     on_file_change(0, 0);
 
-    waitKey(0);
+    cv::waitKey(0);
     return 0;
 }
