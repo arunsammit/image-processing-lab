@@ -52,7 +52,7 @@ Mat dilate(Mat input) {
 		}
 	}
 
-	imshow("Erode", output);
+	imshow("dilation", output);
 
 	return output;
 }
@@ -80,7 +80,7 @@ Mat erode(Mat input) {
 		}
 	}
 
-	imshow("Dilate", output);
+	imshow("erosion", output);
 
 	return output;
 }
