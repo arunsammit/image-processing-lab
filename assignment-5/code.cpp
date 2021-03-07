@@ -30,7 +30,7 @@ Mat dilate(Mat input) {
 					int yy = (y - w / 2) + j;
 					if(!check(xx, yy, input.rows, input.cols))
 						continue;
-					curr = input.at<uchar>(xx,yy)/255 and kernel[i][j];
+					curr = (input.at<uchar>(xx,yy)/255) * (int) kernel[i][j];
 					val |= curr;
 				}
 			}
@@ -58,7 +58,7 @@ Mat erode(Mat input) {
 						val = 0;
 						break;
 					}
-					curr = input.at<uchar>(xx,yy)/255 and kernel[i][j];
+					curr = (input.at<uchar>(xx,yy)/255)* (int) kernel[i][j];
 					val &= curr;
 				}
 			}
