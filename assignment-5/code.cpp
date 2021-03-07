@@ -9,7 +9,10 @@ const int id_max = 5, type_max = 4, N = 15;
 
 int id=0, type = 0;
 int h, w;
+int centerH, centerW;
+int centerH_hat,centerW_hat;
 bool kernel[N][N];
+bool kernet_hat[N][N];
 
 Mat input;
 
@@ -20,17 +23,27 @@ bool check(int x, int y, int n, int m) {
 Mat dilate(Mat input) {
 
 	Mat output = input.clone();
+	for (int i = 0; i < h; i++)
+	{
+		for (int j = 0; j < w; j++)
+		{
+			kernet_hat[i][j] = kernel[h-1-i][w-1-j];
+		}
+		
+	}
+	centerH_hat = h-1-centerH;
+	centerW_hat = w-1-centerW;
 
 	for(int x=0; x<input.rows; x++) {
 		for(int y=0; y<input.cols; y++) {
 			int val = 0, curr;
 			for(int i=0; i<h; i++) {
 				for(int j=0; j<w; j++) {
-					int xx = (x - h / 2) + i;
-					int yy = (y - w / 2) + j;
+					int xx = x + (i - centerH_hat);
+					int yy = y + (j - centerW_hat);
 					if(!check(xx, yy, input.rows, input.cols))
 						continue;
-					curr = (input.at<uchar>(xx,yy)/255) * (int) kernel[i][j];
+					curr = (input.at<uchar>(xx,yy)/255) * (int) kernet_hat[i][j];
 					val |= curr;
 				}
 			}
@@ -52,8 +65,8 @@ Mat erode(Mat input) {
 			int val = 1, curr;
 			for(int i=0; i<h; i++) {
 				for(int j=0; j<w; j++) {
-					int xx = (x - h / 2) + i;
-					int yy = (y - w / 2) + j;
+					int xx = x + (i - centerH);
+					int yy = y + (j - centerW);
 					if(!check(xx, yy, input.rows, input.cols)){
 						val = 0;
 						break;
@@ -96,20 +109,30 @@ static void on_change(int, void*) {
 	
 	switch(id) {
 		case 1:
-			h = 1, w = 3;
+			h = 1, w = 2;
+			centerH = 0;
+			centerW = 0;
 			break;
 		case 2:
 			h = 3, w = 3;
+			centerH = 1;
+			centerW = 1;
 			break;
 		case 3:
 			h = 3, w = 3;
+			centerH = 1;
+			centerW = 1;
 			kernel[0][0] = kernel[0][2] = kernel[2][0] = kernel[2][2] = 0;
 			break;
 		case 4:
 			h = 9, w = 9;
+			centerH = 4;
+			centerW = 4;
 			break;
 		case 5:
 			h = 15, w = 15;
+			centerH = 14;
+			centerW = 14;
 			break;
 		default:
 			return;
