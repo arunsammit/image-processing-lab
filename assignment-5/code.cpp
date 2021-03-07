@@ -26,11 +26,11 @@ Mat dilate(Mat input) {
 			int val = 0, curr;
 			for(int i=0; i<h; i++) {
 				for(int j=0; j<w; j++) {
-					int xx = x+(i-h/2);
-					int yy = y+(j-w/2);
-					if(!check(xx, yy, input.rows, input.cols) or !kernel[i][j])
+					int xx = (x - h / 2) + i;
+					int yy = (y - w / 2) + j;
+					if(!check(xx, yy, input.rows, input.cols))
 						continue;
-					curr = input.at<uchar>(xx,yy)/255;
+					curr = input.at<uchar>(xx,yy)/255 and kernel[i][j];
 					val |= curr;
 				}
 			}
@@ -52,11 +52,13 @@ Mat erode(Mat input) {
 			int val = 1, curr;
 			for(int i=0; i<h; i++) {
 				for(int j=0; j<w; j++) {
-					int xx = x+(i-h/2);
-					int yy = y+(j-w/2);
-					if(!check(xx, yy, input.rows, input.cols) or !kernel[i][j])
-						continue;
-					curr = input.at<uchar>(xx,yy)/255;
+					int xx = (x - h / 2) + i;
+					int yy = (y - w / 2) + j;
+					if(!check(xx, yy, input.rows, input.cols)){
+						val = 0;
+						break;
+					}
+					curr = input.at<uchar>(xx,yy)/255 and kernel[i][j];
 					val &= curr;
 				}
 			}
