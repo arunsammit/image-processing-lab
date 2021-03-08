@@ -3,159 +3,190 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <filesystem>
+#define MAX_N 15
 using namespace cv;
 using namespace std;
 
-const int id_max = 5, type_max = 4, N = 15;
+class struct_element{
+public:
+	bool** kernel = nullptr;
+	int h = 0, w = 0;
+	int centerH = 0, centerW = 0;
+	struct_element(){
 
-int id=0, type = 0;
-int h, w;
-int centerH, centerW;
-int centerH_hat,centerW_hat;
-bool kernel[N][N];
-bool kernet_hat[N][N];
-
-Mat input;
-
-bool check(int x, int y, int n, int m) {
-	return x>=0 and y>=0 and x<n and y<m;
-}
-
-Mat dilate(Mat input) {
-
-	Mat output = input.clone();
-	for (int i = 0; i < h; i++)
-	{
-		for (int j = 0; j < w; j++)
+	}
+	struct_element(bool** kernel,int h,int w,int centerH,int centerW){
+		this->h = h;
+		this->w = w;
+		this->centerH = centerH;
+		this->centerW = centerW;
+		this->kernel = new bool*[h];
+		for (int i = 0; i < h; i++)
 		{
-			kernet_hat[i][j] = kernel[h-1-i][w-1-j];
-		}
-		
-	}
-	centerH_hat = h-1-centerH;
-	centerW_hat = w-1-centerW;
-
-	for(int x=0; x<input.rows; x++) {
-		for(int y=0; y<input.cols; y++) {
-			int val = 0, curr;
-			for(int i=0; i<h; i++) {
-				for(int j=0; j<w; j++) {
-					int xx = x + (i - centerH_hat);
-					int yy = y + (j - centerW_hat);
-					if(!check(xx, yy, input.rows, input.cols))
-						continue;
-					curr = (input.at<uchar>(xx,yy)/255) * (int) kernet_hat[i][j];
-					val |= curr;
-				}
+			this->kernel[i] = new bool[w];
+			for (int j = 0; j < w; j++)
+			{
+				this->kernel[i][j] = kernel[i][j];
 			}
-			val *= 255;
-			output.at<uchar>(x,y) = val;
+			
 		}
 	}
+	struct_element(const struct_element &se)
+	{
+		h = se.h;
+		w = se.w;
+		centerH = se.centerH;
+		centerW = se.centerW;
+		kernel = new bool *[h];
+		for (int i = 0; i < h; i++)
+		{
+			kernel[i] = new bool[w];
+			for (int j = 0; j < w; j++)
+			{
+				kernel[i][j] = se.kernel[i][j];
+			}
+		}
+	}
+	struct_element reflection() const{
+		struct_element op(*this);
+		for (int i = 0; i < op.h; i++)
+		{
+			for (int j = 0; j < op.w; j++)
+			{
+				op.kernel[i][j] = this->kernel[op.h - 1 - i][op.w - 1 - j];
+			}
+		}
+		op.centerH = op.h - 1 - this->centerH;
+		op.centerW = op.w - 1 - this->centerW;
+		return op;
+	}
+	~struct_element(){
+		for (int i = 0; i < h; i++)
+		{
+			delete this->kernel[i];
+		}
+		delete this->kernel;
+	}
+};
+namespace operations{
 
-	imshow("dilation", output);
+	bool check(int x, int y, int n, int m) {
+		return x>=0 and y>=0 and x<n and y<m;
+	}
 
-	return output;
-}
+	Mat dilate(const Mat& input,const struct_element& se) {
+		Mat output = input.clone();
+		struct_element se_hat(se.reflection());
 
-Mat erode(Mat input) {
-	Mat output = input.clone();
-
-	for(int x=0; x<input.rows; x++) {
-		for(int y=0; y<input.cols; y++) {
-			int val = 1, curr;
-			for(int i=0; i<h; i++) {
-				for(int j=0; j<w; j++) {
-					int xx = x + (i - centerH);
-					int yy = y + (j - centerW);
-					if(!check(xx, yy, input.rows, input.cols)){
-						val = 0;
-						break;
+		for(int x=0; x<input.rows; x++) {
+			for(int y=0; y<input.cols; y++) {
+				bool val = 0, curr;
+				for(int i=0; i<se_hat.h; i++) {
+					for(int j=0; j<se_hat.w; j++) {
+						int xx = x + (i - se_hat.centerH);
+						int yy = y + (j - se_hat.centerW);
+						if( !check(xx, yy, input.rows, input.cols) || se.kernel[i][j] == 0)
+							continue;
+						curr = (input.at<uchar>(xx, yy) > 0) and se.kernel[i][j];
+						val |= curr;
 					}
-					curr = (input.at<uchar>(xx,yy)/255)* (int) kernel[i][j];
-					val &= curr;
 				}
+				output.at<uchar>(x, y) = 255 * (int)val;
 			}
-			val *= 255;
-			output.at<uchar>(x,y) = val;
 		}
+
+		return output;
 	}
 
-	imshow("erosion", output);
+	Mat erode(const Mat& input, const struct_element& se) {
+		Mat output = input.clone();
+		
+		for(int x=0; x<input.rows; x++) {
+			for(int y=0; y<input.cols; y++) {
+				bool val = 1, curr;
+				for(int i=0; i<se.h; i++) {
+					for(int j=0; j<se.w; j++) {
+						int xx = x + (i - se.centerH);
+						int yy = y + (j - se.centerW);
+						if(!check(xx, yy, input.rows, input.cols)){
+							val = 0;
+							break;
+						}
+						if(se.kernel[i][j] == 0){
+							continue;
+						}
+						curr = (input.at<uchar>(xx,yy)>0) and se.kernel[i][j];
+						val &= curr;
+					}
+				}
+				output.at<uchar>(x,y) = 255 * (int)val;
+			}
+		}
 
-	return output;
-}
 
-void openclose(Mat input) {
-	
-	Mat output = erode(dilate(input));
-	imshow("OpenClose", output);	
-
-	return;
-}
-
-void closeopen(Mat input) {
-
-	Mat output = dilate(erode(input));
-	imshow("CloseOpen", output);
-
-	return;
-}
-
-static void on_change(int, void*) {
-
-	for(int i=0; i<N; i++)
-		for(int j=0; j<N; j++)
-			kernel[i][j] = 1;
-	
-	switch(id) {
-		case 1:
-			h = 1, w = 2;
-			centerH = 0;
-			centerW = 0;
-			break;
-		case 2:
-			h = 3, w = 3;
-			centerH = 1;
-			centerW = 1;
-			break;
-		case 3:
-			h = 3, w = 3;
-			centerH = 1;
-			centerW = 1;
-			kernel[0][0] = kernel[0][2] = kernel[2][0] = kernel[2][2] = 0;
-			break;
-		case 4:
-			h = 9, w = 9;
-			centerH = 4;
-			centerW = 4;
-			break;
-		case 5:
-			h = 15, w = 15;
-			centerH = 14;
-			centerW = 14;
-			break;
-		default:
-			return;
+		return output;
 	}
 
-	switch(type) {
-		case 1:
-			dilate(input);
-			break;
-		case 2:
-			erode(input);
-			break;
-		case 3:
-			openclose(input);
-			break;
-		case 4:
-			closeopen(input);
-			break;
-		default:
-			return;
+	Mat openclose(const Mat& input, const struct_element& se)
+	{
+
+		return erode(dilate(input, se),se);	
+	}
+
+	Mat closeopen(const Mat& input, const struct_element& se) {
+
+		return dilate(erode(input,se),se);
 	}
 }
+namespace change{
+	cv::Mat input;
+	const int id_max = 4, type_max = 4;
+	vector<struct_element> elements;
+	int id, type;
+	void init(string input_image_path){
+		change::input = cv::imread(input_image_path, 0);
+		bool **kernel = new bool *[MAX_N];
+		for (size_t i = 0; i < MAX_N; i++)
+		{
+			kernel[i] = new bool[MAX_N];
+			for (size_t j = 0; j < MAX_N; j++)
+			{
+				kernel[i][j] = 1;
+			}
+		}
+		change::elements.push_back(struct_element(kernel, 1, 2, 0, 0));
+		change::elements.push_back(struct_element(kernel, 3, 3, 1, 1));
+		kernel[0][0] = kernel[0][2] = kernel[2][0] = kernel[2][2] = 0;
+		change::elements.push_back(struct_element(kernel, 3, 3, 1, 1));
+		kernel[0][0] = kernel[0][2] = kernel[2][0] = kernel[2][2] = 1;
+		change::elements.push_back(struct_element(kernel, 9, 9, 4, 4));
+		change::elements.push_back(struct_element(kernel, 15, 15, 7, 7));
+	}
+	void on_change(int, void*) {
+		if(id>=elements.size()){
+			throw runtime_error("given structuring element is not present");
+		}
+
+		Mat output;
+		switch(type) {
+			case 1:
+				output = operations::dilate(input, elements.at(id));
+				break;
+			case 2:
+				output = operations::erode(input, elements.at(id));
+				break;
+			case 3:
+				output = operations::openclose(input, elements.at(id));
+				break;
+			case 4:
+				output = operations::closeopen(input, elements.at(id));
+				break;
+			default:
+				return;
+		}
+		cv::imshow("output",output);
+	}
+};
 
 int main(int argc, char const *argv[])
 {
@@ -164,12 +195,11 @@ int main(int argc, char const *argv[])
 		cout << "usage ./code <path to input image>\n";
 		return -1;
 	}
-	cv::Mat input = cv::imread(argv[1], 0);
+	change::init(argv[1]);
 	namedWindow("Structure Tracker", WINDOW_AUTOSIZE);
-    createTrackbar("Structure", "Structure Tracker", &id, id_max, on_change);
-    createTrackbar("Transformation", "Structure Tracker", &type, type_max, on_change);
-    imshow("Structure Tracker", input);
-
+	createTrackbar("Structure", "Structure Tracker", &change::id, change::id_max, change::on_change);
+    createTrackbar("Transformation", "Structure Tracker", &change::type, change::type_max, change::on_change);
+    imshow("Structure Tracker", change::input);
     waitKey(0);
     return 0;
 }
