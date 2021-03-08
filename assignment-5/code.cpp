@@ -2,6 +2,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
+#include <filesystem>
 using namespace cv;
 using namespace std;
 
@@ -154,18 +155,16 @@ static void on_change(int, void*) {
 		default:
 			return;
 	}
-
-	return;
 }
 
-int main() {
-    
-	string file;
-	cout << "File Name: ";
-	//cin >> file;
-	file = "ricegrains.bmp";
-    input = imread(file, 0);
-
+int main(int argc, char const *argv[])
+{
+	if (argc != 2)
+	{
+		cout << "usage ./code <path to input image>\n";
+		return -1;
+	}
+	cv::Mat input = cv::imread(argv[1], 0);
 	namedWindow("Structure Tracker", WINDOW_AUTOSIZE);
     createTrackbar("Structure", "Structure Tracker", &id, id_max, on_change);
     createTrackbar("Transformation", "Structure Tracker", &type, type_max, on_change);
