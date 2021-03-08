@@ -2,7 +2,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
-#include <filesystem>
+
 #define MAX_N 15
 using namespace cv;
 using namespace std;
@@ -85,7 +85,7 @@ namespace operations{
 					for(int j=0; j<se_hat.w; j++) {
 						int xx = x + (i - se_hat.centerH);
 						int yy = y + (j - se_hat.centerW);
-						if( !check(xx, yy, input.rows, input.cols) || se.kernel[i][j] == 0)
+						if( !check(xx, yy, input.rows, input.cols) || !se.kernel[i][j])
 							continue;
 						curr = (input.at<uchar>(xx, yy) > 0) and se.kernel[i][j];
 						val |= curr;
@@ -108,11 +108,11 @@ namespace operations{
 					for(int j=0; j<se.w; j++) {
 						int xx = x + (i - se.centerH);
 						int yy = y + (j - se.centerW);
-						if(!check(xx, yy, input.rows, input.cols)){
+						if(!check(xx, yy, input.rows, input.cols) and se.kernel[i][j]){
 							val = 0;
 							break;
 						}
-						if(se.kernel[i][j] == 0){
+						if(!se.kernel[i][j]){
 							continue;
 						}
 						curr = (input.at<uchar>(xx,yy)>0) and se.kernel[i][j];
@@ -185,6 +185,7 @@ namespace change{
 				return;
 		}
 		cv::imshow("output",output);
+		cv::imwrite("output.jpg",output);
 	}
 };
 
