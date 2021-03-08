@@ -127,13 +127,13 @@ namespace operations{
 		return output;
 	}
 
-	Mat openclose(const Mat& input, const struct_element& se)
+	Mat opening(const Mat& input, const struct_element& se)
 	{
 
 		return erode(dilate(input, se),se);	
 	}
 
-	Mat closeopen(const Mat& input, const struct_element& se) {
+	Mat closing(const Mat& input, const struct_element& se) {
 
 		return dilate(erode(input,se),se);
 	}
@@ -176,10 +176,10 @@ namespace change{
 				output = operations::erode(input, elements.at(id));
 				break;
 			case 3:
-				output = operations::openclose(input, elements.at(id));
+				output = operations::opening(input, elements.at(id));
 				break;
 			case 4:
-				output = operations::closeopen(input, elements.at(id));
+				output = operations::closing(input, elements.at(id));
 				break;
 			default:
 				return;
